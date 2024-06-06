@@ -78,7 +78,7 @@ export const updateUser = async(req,res)=>{
     let {profileImg,coverImg} = req.body
     const userId = req.user._id
     try {
-        const user = await User.findById(userId)
+        let user = await User.findById(userId)
         if(!user) return res.status(404).json({message:"User not found"})
         if((!newPassword && currentPassword)||(newPassword && !currentPassword)){
             return res.status(400).json({error:"please provide both current password and new password"})
@@ -92,15 +92,32 @@ export const updateUser = async(req,res)=>{
             user.password = hashedPassword
         }
      if(profileImg){
+        if(user.profileImg){
+            await cloudinary.uploader.destroy(user.profileImg.split('/').pop().split(".")[0])
+        }
          const uploadedResponse = await cloudinary.uploader.upload(profileImg)
          profileImg = uploadedResponse.secure_url
      }
      if(coverImg){
+        if(user.coverImg){
+            await cloudinary.uploader.destroy(user.coverImg.split('/').pop().split(".")[0])
+
+        }
          const uploadedResponse = await cloudinary.uploader.upload(coverImg)
          coverImg = uploadedResponse.secure_url
      }
+        user.username = username || user.username
+        user.fullName = fullName || user.fullName
+        user.email = email || user.email
+        user.bio = bio || user.bio
+        user.link  = link || user.link
+
+        user = await user.save()
+        user.password = null
+        return res.status(200).json(user)
 
     } catch (error) {
-        
+        console.log("error in updateUser",error.message);
+        res.status(500).json({error:error.message})
     }
 }
