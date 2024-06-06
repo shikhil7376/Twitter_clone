@@ -4,7 +4,6 @@ import cloudinary from 'cloudinary'
 
 export const createPost = async(req,res)=>{
     try {
-        console.log("here>>>");
         const {text} = req.body
         let {img} = req.body
         const userId = req.user._id.toString()
@@ -44,8 +43,32 @@ export const deletePost = async(req,res)=>{
           await cloudinary.uploader.destroy(imgId)
        }
        await Post.findByIdAndDelete(req.params.id)
+       res.status(200).json({message:"post deleted succesfully"})
     } catch (error) {
         console.log("error in delete post",error);
         res.status(500).json({error:"internal server error"})
+    }
+}
+
+export const commentOnPost = async(req,res)=>{
+    console.log("comment post");
+    try {
+       const {text} = req.body
+       const postId = req.params.id
+       const userId = req.user._id
+       if(!text){
+        return res.status(400).json({error:"text field is required"})
+       } 
+       const post = await Post.findById(postId)
+       if(!post){
+        return res.status(404).json({error:"post not found"})
+       }
+       const comment = {user:userId,text}
+       post.comments.push(comment)
+       await post.save()
+       res.status(200).json(post)
+    } catch (error) {
+        console.log("error in commentPost contoller",error);
+        res.status(500).json({error:"Internal server error"})
     }
 }
