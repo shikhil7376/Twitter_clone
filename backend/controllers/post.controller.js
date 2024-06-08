@@ -1,5 +1,6 @@
 import User from "../models/user.model.js"
 import Post from "../models/post.model.js";
+import Notification from "../models/notification.model.js";
 import cloudinary from 'cloudinary'
 
 export const createPost = async(req,res)=>{
@@ -70,5 +71,54 @@ export const commentOnPost = async(req,res)=>{
     } catch (error) {
         console.log("error in commentPost contoller",error);
         res.status(500).json({error:"Internal server error"})
+    }
+}
+
+export const likeUnlikePost = async(req,res)=>{
+    try {
+        let userId = req.user._id
+        let postId = req.params.id
+        let post = await Post.findById(postId)
+        if(!post){
+            return res.status(400).json({error:"post not found"})
+        }
+        let hasLiked = post.likes.includes(userId)
+        if(hasLiked){
+            await post.updateOne({_id:postId},{$pull:{likes:userId}})
+            res.status(200).json({message:'Post unliked succesfully'})
+        }else{
+            post.likes.push(userId)
+            await post.save()
+           const notification = new Notification({
+                from:userId,
+                to:post.user,
+                type:'like'
+           })
+           await notification.save()
+           res.status(200).json({message:'post liked succesfully'})
+        }
+    } catch (error) {
+        console.log("error in likeUnlike",error);
+         res.status(500).json({error:'internal server error'})
+    }
+}
+
+export const getAllPosts = async(req,res)=>{
+    try {
+        const posts = await Post.find().sort({createdAt:-1}).populate({
+            path:"user",
+            select:"-password"
+        }).populate({
+            path:"comments.user",
+            select:'-password'
+        })
+
+        if(posts.length === 0){
+           return res.status(200).json([]) 
+        }
+        res.status(200).json(posts)
+    } catch (error) {
+        console.log('error in getting all post',error);
+        res.status(500).json({error:'internal server error'})
     }
 }
